@@ -1,0 +1,111 @@
+---
+author: "Luis Jiménez"
+format:
+  html:
+    toc: true
+    embebed-resources: true
+---
+
+## Pkgs
+
+```{r}
+#| message: false
+  library(tidyverse)
+  library(fpp3)
+  library(plotly)
+  library(tidyquant)
+
+```
+
+##
+
+```{r}
+?aus_accommodation
+
+aus_accommodation
+
+```
+
+```{r}
+
+aus_accommodation |>
+  distinct(State)
+
+tasmania <- aus_accommodation |>
+  filter(State == "Tasmania") |> 
+  # select(Date, Takings, Occupancy)  Opción 1
+  # select(Date, Takings: Occupancy)  Opción 2
+  select(-c(State, CPI)) |> 
+  mutate(
+    'Año unión N°1' = 1
+  ) |> 
+  janitor::clean_names()
+
+tasmania
+
+```
+
+```{r}
+
+tasmania |> 
+  autoplot(takings, color="slateblue", size = 1)
+
+```
+Se observa que los Takings tienen una tendencia alcista y con una estacionalidad anual, así mismo, mientras mas crece, aumenta su varianza
+
+```{r}
+
+tasmania |> 
+  autoplot(log(takings), color = "slateblue", size = 1) #Se aplica logaritmo para corregir la varianza
+
+```
+
+```{r}
+
+tasmania |> 
+  gg_season(log(takings), size = 1)
+
+```
+
+```{r}
+
+tasmania |> 
+  gg_subseries(log(takings))
+
+```
+
+```{r}
+
+tasmania |> 
+  gg_tsdisplay(log(takings), plot_type = "season")
+
+```
+
+```{r}
+stocks <- c("MCK", "META", "NVDA")
+
+stocks_data <- tq_get(
+  x = stocks,
+  get = "stock.prices",
+  from = "2010-01-01",
+  to = "2024-01-25"
+)
+
+stocks_data <- stocks_data |> 
+  as_tsibble(index = date, key = symbol)
+
+
+stocks_data
+
+```
+
+```{r}
+
+stocks_data |> 
+  ggplot(aes(x = date, open = open, high = high, low = low, close = close)) +
+  theme_dark() +
+  geom_candlestick() +
+  facet_wrap(~ symbol, ncol = 2)
+
+```
+
