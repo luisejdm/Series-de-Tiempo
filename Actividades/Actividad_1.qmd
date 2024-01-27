@@ -106,6 +106,5 @@ stocks_data |>
   geom_candlestick() +
   facet_wrap(~ symbol, ncol = 2)
 
-
 ```
 
