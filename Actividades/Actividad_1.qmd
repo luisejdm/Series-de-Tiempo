@@ -94,7 +94,6 @@ stocks_data <- tq_get(
 stocks_data <- stocks_data |> 
   as_tsibble(index = date, key = symbol)
 
-
 stocks_data
 
 ```
