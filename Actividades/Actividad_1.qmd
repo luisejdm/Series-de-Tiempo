@@ -55,8 +55,12 @@ Se observa que los Takings tienen una tendencia alcista y con una estacionalidad
 
 ```{r}
 
-tasmania |> 
-  autoplot(log(takings), color = "slateblue", size = 1) #Se aplica logaritmo para corregir la varianza
+p <- tasmania |> 
+  autoplot(log(takings), color = "slateblue", size = 1) + #Se aplica logaritmo para corregir la varianza
+  geom_point()
+
+ggplotly(p, dynamicTics = TRUE) |> 
+  rangeslider()
 
 ```
 
@@ -107,4 +111,5 @@ stocks_data |>
   facet_wrap(~ symbol, ncol = 2)
 
 ```
+
 
