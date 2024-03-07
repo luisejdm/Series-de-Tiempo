@@ -1,0 +1,212 @@
+---
+title: "Ejercicios clase"
+format: html
+editor: visual
+---
+
+## pkgs
+
+```{r}
+library(tidyverse)
+library(fpp3)
+```
+
+# 1
+
+## Tabla
+
+```{r}
+global_economy
+```
+
+## PIB
+
+```{r}
+pib <- global_economy |> 
+  select(-c(Growth:Exports))
+
+pib
+
+```
+
+## Graficar Pib per Cápita
+
+```{r}
+pib |> 
+  autoplot(GDP/Population) + 
+  theme(legend.position = "none")
+```
+
+## Evolución de la economía
+
+Todos los paises tienen una clara tendencia a la alza. Sin embargo, hay algunos que han presentado mucho más crecimiento que otros.
+
+## País con máximo Pib per Cápita
+
+```{r}
+global_economy |> 
+  mutate(gdp_per_capita = GDP/Population) |> 
+  select(-c(Code, Growth:Exports)) |> 
+  filter(Year %in% 2010:2017) |> 
+  as_tibble() |> 
+  group_by(Country) |> 
+  summarise(mean_gdppc =mean(gdp_per_capita, na.rm = TRUE)) |> 
+  arrange(desc(mean_gdppc))
+
+```
+
+# 2
+
+## PIB USA (Sin Transformar)
+
+```{r}
+global_economy |> 
+  filter(Country == "United States") |> 
+  select(GDP) |> 
+  autoplot()
+```
+
+## PIB USA (Transformada para reducir la exponencial y convertirla en una lineal)
+
+```{r}
+global_economy |> 
+  filter(Country == "United States") |> 
+  select(GDP) |> 
+  autoplot(log(GDP))
+```
+
+## PIB Mexico (Sin transformar)
+
+```{r}
+global_economy |> 
+  filter(Country == "Mexico") |> 
+  select(-c(Code, Growth:Population)) |> 
+  autoplot()
+
+```
+
+## PIB México (Transformar para reducir la exponencial y convertirla en una lineal)
+
+```{r}
+global_economy |> 
+  filter(Country == "Mexico") |> 
+  select(-c(Code, Growth:Population)) |> 
+  autoplot(log(GDP))
+
+```
+
+## Tabla demanda de electricidad en Victoria, Australia
+
+```{r}
+vic_elec |> 
+  select(-c(Temperature:Holiday))
+```
+
+## Gráfica de electricidad en Victoria, Australia
+
+```{r}
+vic_elec |> 
+  select(-c(Temperature:Holiday)) |> 
+  autoplot()
+```
+
+# 3
+
+## Gráfica de "canadian_gas"
+
+```{r}
+canadian_gas |> 
+  autoplot()
+```
+
+## Serie transformada con Box_Cox
+
+```{r}
+lambda <- canadian_gas |> 
+  features(Volume, features = guerrero) |> 
+  pull(lambda_guerrero)
+
+canadian_gas |> 
+  autoplot(box_cox(Volume, lambda))
+```
+
+Como se aprecia en ambas gráficas no hay mucha diferencia, por lo que realizar la transformación no valdría la pena dado que no se esta corriendo la tendencia, ni la varianza, prácticamente queda igual.
+
+## 4
+
+### i. Gráfica de la serie de tiempo para el producto A
+
+```{r}
+fma::plastics
+```
+
+```{r}
+fma::plastics |> 
+  autoplot()
+```
+
+Como se aprecia en la gráfica, tiene una tendencia alcista. Así mismo, presenta estacionalidad anual y una gran varianza con picos a la alza alrededor del octavo mes y luego caidas bruscas hasta el año nuevo.
+
+### ii. Descomposición clásica a la serie
+
+```{r}
+plastics_tsbl <- as_tsibble(fma::plastics)
+
+plastics_decomp <- plastics_tsbl |>
+  model(
+    clasica = classical_decomposition(value,
+                                      type = "multiplicative")
+  )
+plastics_components <- plastics_decomp |> 
+  components()
+
+plastics_components |> 
+  autoplot()
+
+```
+
+### iii. ¿Los resultados coinciden con su respuesta al inciso i)?
+
+Los resultados si coinciden en su mayor parte con las observaciones hechas con la serie original, sin embargo, en la descomposición se puede observar que hay una leve caída en la tendencia en el final de la serie que no era tan facil de apreciar al principio.
+
+### iv. Calcule y grafique los datos desestacionalizados
+
+```{r}
+dest_plastics <- plastics_components |> 
+  select(season_adjust)
+
+dest_plastics |> 
+  autoplot()
+
+
+```
+
+### V. Cambie, manualmente, una observación para que sea un outlier (p. ej., sume 500 a una observación). Vuelva a estimar los datos desestacionalizados. ¿Cuál fue el efecto de ese outlier?
+
+```{r}
+plastics_tsbl_modified <- plastics_tsbl
+
+
+plastics_tsbl_modified[2, 'value'] <- plastics_tsbl_modified[2, 'value'] + 500
+#la columna "value" contiene los valores de la serie de tiempo que estamos modificando.
+
+plastics_decomp_modified <- plastics_tsbl_modified |>
+  model(
+    clasica = classical_decomposition(value,
+                                      type = "multiplicative")
+  )
+
+plastics_components_modified <- plastics_decomp_modified |> 
+  components()
+
+
+dest_plastics_modified <- plastics_components_modified |> 
+  select(season_adjust)
+
+dest_plastics_modified |> 
+  autoplot()
+
+
+```
+
+El outlier es identico al anterior de datos desestacionalizados, solo que muestra un pico demasiado alto y muy brusco al inicio.

@@ -1,0 +1,153 @@
+---
+title: "Examen 1"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+---
+
+# Luis Eduardo Jiménez del Muro
+
+# Librerias
+```{r}
+#| message: false
+
+library(tidyverse)
+library(fpp3)
+```
+
+
+# Graficar datos
+```{r}
+data <- tidyquant::tq_get(
+      x = "RIVN",
+      from = today() - 365,
+      to = today() - 1
+    ) |>
+      select(symbol, adjusted)  |>
+      mutate(
+        t = seq_len(n())
+      ) |>
+      as_tsibble(index = t, key = symbol) |>
+      relocate(symbol, t)
+
+data
+
+autoplot(data)
+```
+# Obtener Lambda
+
+```{r}
+
+data |> 
+  features(adjusted, features=guerrero)
+
+```
+# Grafica con box-cox
+```{r}
+lambda <- -0.4972675
+
+data |> 
+  autoplot(box_cox(adjusted, lambda))
+```
+# Descomponer para ver si vale la pena
+```{r}
+data |> 
+  model(
+    stl = STL(box_cox(adjusted, lambda), robust = TRUE)
+  ) |>  
+  components() |> 
+  autoplot()
+```
+# Seleccionar datos de entrenamiento
+
+```{r}
+
+data_train <- data |> 
+  filter_index(. ~ "200")
+
+data_train
+
+data_train |> 
+  autoplot()
+
+```
+# Datos de entrenamiento con box-cox
+
+```{r}
+lambda <- data_train |> 
+  features(adjusted, features = guerrero) |> 
+  pull(lambda_guerrero)
+
+lambda
+
+data_train |> 
+  autoplot(box_cox(adjusted, lambda))
+
+```
+# Hacer los modelos para comparar cual vale mas la pena
+
+```{r}
+
+data_fit <- data_train |> 
+  model(
+    media = MEAN(box_cox(adjusted, lambda)),
+    naive = NAIVE(box_cox(adjusted, lambda)),
+    drift = RW(box_cox(adjusted, lambda) ~ drift()),
+    # No se usa snaive porque no tiene estacionalidad
+  )
+
+data_fit
+```
+
+```{r}
+accuracy(data_fit)
+```
+El que tiene menos error es naive con mae
+
+# Preparar datos para el pronóstico
+
+```{r}
+
+data_fit <- data_train |> 
+  model(
+    naive = NAIVE(box_cox(adjusted, lambda)),
+  )
+
+data_fit
+```
+# P-value
+
+```{r}
+data_fit |> 
+  augment() |> 
+  features(.innov, ljung_box, lag = 10, dof = 0)
+```
+
+Como el p-values es mayor a $\alpha$; $p_{value} = 0.05$, **NO RECHAZAMOS** $H_0 : \text{"Los residuos son ruido blanco"}$
+
+# Gráficas de residuos
+
+```{r}
+data_fit |> 
+  select(naive) |> 
+  gg_tsresiduals()
+```
+# Pronóstico
+
+```{r}
+data_fc <- data_fit |> 
+  forecast(h = 50)
+
+data_fc |> 
+  autoplot(data) +
+  facet_wrap(~ .model) +
+  theme(legend.position = "none")
+```
+
+
+
+
+
+
+

@@ -1,0 +1,42 @@
+---
+title: "TS Features"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(fpp3)
+```
+
+```{r}
+aus_accommodation
+```
+
+Usaremos la función `features()`
+
+```{r}
+
+aus_accommodation_long <- aus_accommodation |> 
+  pivot_longer(cols = Takings:CPI, names_to = "variable",
+               values_to = "valor")
+
+aus_accommodation_long |> 
+  features(valor,
+           list(media = mean,
+                desv_std = sd,
+                minimo = min,
+                maximo = max,
+                mediana = median) ) 
+```
+
+```{r}
+aus_accommodation_long |> 
+  features(valor, feat_stl)
+```
+
+```{r}
+aus_accommodation_long |> 
+  features(valor, features = guerrero)
+```
+
