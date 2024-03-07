@@ -1,0 +1,302 @@
+---
+title: "Tarea 2"
+author: "Luis Eduardo Jiménez del Muro"
+date: today
+format: 
+  html:
+    embed-resources: true
+    toc: true
+    code-link: true
+    theme: 
+      light: minty
+      dark: darkly
+---
+
+### Paqueterías
+```{r}
+#| message: false
+library(tidyverse)
+library(tsibble)
+library(feasts)
+library(fable)
+library(tsibbledata)
+library(fpp3)
+library(plotly)
+```
+
+## Recopilar las series de tiempo
+
+```{r}
+data1 <- tidyquant::tq_get(
+  x    = "CLVMNACSCAB1GQIT",
+  get  = "economic.data",
+  from = "1997-01-01"
+)
+
+data2 <- aus_production |> 
+  select(Cement)
+
+data1
+data2
+
+```
+
+### Ajustar tabla del PIB de Italia 1
+
+```{r}
+data1 <- data1 |> 
+  mutate(date = yearquarter(date)) |> 
+  as_tsibble(
+    index = date,
+    key   = symbol
+  )
+
+data1
+```
+
+## Gráficar las series
+
+```{r}
+data1 |> 
+  autoplot(price)
+
+data2 |> 
+  autoplot(Cement)
+```
+
+## Establecer datos de entrenamiento y gráficas
+
+```{r}
+data1_train <- data1 |> 
+  filter_index(. ~ "2018 Q1")
+
+data2_train <- data2 |> 
+  filter_index(. ~ "2000 Q1")
+
+p1 <- data1_train |> 
+  autoplot() +
+  labs(
+    title = "Serie de tiempo del PIB de Italia",
+    y = "PIB"
+  )
+
+p2 <- data2_train |> 
+  autoplot() +
+  labs(
+    title = "Serie de tiempo de la producción de cemento en Australia",
+    y = "CEMENTO"
+  )
+ 
+ggplotly(p1, dynamicTicks = TRUE) |> 
+  rangeslider()
+ 
+ggplotly(p2, dynamicTicks = TRUE) |> 
+  rangeslider()
+```
+
+### Gráficas de Estacionalidad
+
+```{r}
+data1_train |> 
+  gg_season() |> 
+  ggplotly()
+
+data2_train |> 
+  gg_season() |> 
+  ggplotly()
+```
+
+### Descomposición de las series
+```{r}
+data1_train |> 
+  model(stl = STL(price, robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+
+data2_train |> 
+  model(stl = STL(Cement, robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+```
+
+### Datos de entrenamiento con transformación logarítmica.
+
+```{r}
+data1_train |> 
+  autoplot(log(price)) +
+  ggtitle("Log del PIB de Italia")
+
+data2_train |> 
+  autoplot(log(Cement)) +
+  ggtitle("Log de la producción de cemento en Australia")
+```
+
+### Descomposición de la producción de cemento en Australia con transformación logarítmica
+
+```{r}
+data1_train |> 
+  model(stl = STL(log(price), robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+
+data2_train |> 
+  model(stl = STL(log(Cement), robust = TRUE)) |> 
+  components() |> 
+  autoplot() |> 
+  ggplotly()
+```
+
+## Modelos de pronósticos
+
+```{r}
+data1_fit <- data1_train |> 
+  model(
+    naive = NAIVE(price),
+    snaive = SNAIVE(price),
+    drift = RW(price ~ drift()),
+    stlf = decomposition_model(
+          STL(price ~ season(window = "periodic"), robust = TRUE),
+          RW(season_adjust ~ drift())
+    ),
+    data1_AAdA = ETS(price ~ error("A") + trend("Ad") + season("A")),
+    stl_ets = decomposition_model(
+      STL(price, robust = TRUE),
+      ETS(season_adjust ~ error("A") + trend("A") + season("N"))
+    )
+  )
+
+data2_fit <- data2_train |> 
+  model(
+    naive = NAIVE(log(Cement)),
+    snaive = SNAIVE(log(Cement)),
+    drift = RW(log(Cement) ~ drift()),
+    stlf = decomposition_model(
+          STL(log(Cement) ~ season(window = "periodic"), robust = TRUE),
+          SNAIVE(season_year),
+          RW(season_adjust ~ drift())
+    ),
+    data1_AAN = ETS(log(Cement) ~ error("A") + trend("A") + season("A")),
+    stl_ets = decomposition_model(
+      STL(Cement, robust = TRUE),
+      ETS(season_year ~ error("A") + trend("N") + season("M")),
+      ETS(season_adjust ~ error("A") + trend("Ad") + season("N"))
+
+    )
+  )
+
+data1_fit
+data2_fit
+```
+### Errores
+
+```{r}
+accuracy(data1_fit) |> 
+  arrange(MAPE)
+
+accuracy(data2_fit) |> 
+  arrange(MAPE)
+```
+### P-Values
+
+```{r}
+data1_fit |> 
+  augment() |> 
+  features(.innov, ljung_box, lag=10)
+
+data2_fit |> 
+  augment() |> 
+  features(.innov, ljung_box, lag=8)
+```
+
+### Diagnóstico de residuos de los mejores modelos para el PIB de Italia
+
+```{r}
+data1_fit |> 
+  select(stl_ets) |> 
+  gg_tsresiduals()
+
+data1_fit |> 
+  select(data1_AAdA) |> 
+  gg_tsresiduals()
+```
+
+## Diagnóstico de residuos de los mejores modelos para la producción de cemento en Australia
+
+```{r}
+data2_fit |> 
+  select(stl_ets) |> 
+  gg_tsresiduals()
+
+data2_fit |> 
+  select(data1_AAN) |> 
+  gg_tsresiduals()
+```
+
+## Pronósticos con los datos de entrenamiento
+
+```{r}
+data1_fc <- data1_fit |> 
+  forecast(h = 23)
+
+data2_fc <- data2_fit |> 
+  forecast(h = 41)
+
+data1_fc
+data2_fc
+```
+
+```{r}
+data1_fc |> 
+  autoplot(data1 |> filter_index("2016 Q1" ~ .), size = 1) +
+  facet_wrap(~ .model, ncol = 3) +
+  theme(legend.position = "none")
+
+data2_fc |> 
+  autoplot(data2 |> filter_index("1995 Q1" ~ .), size = 1) +
+  facet_wrap(~ .model, ncol = 3) +
+  theme(legend.position = "none")
+```
+
+## Errores del pronóstico estimados
+
+```{r}
+data1_fc |> 
+  accuracy(data1) |> 
+  select(.model:.type, MAPE, RMSE, MAE, MASE) |> 
+  arrange(MAPE)
+
+data2_fc |> 
+  accuracy(data2) |> 
+  select(.model:.type, MAPE, RMSE, MAE, MASE) |> 
+  arrange(MAPE)
+```
+
+## Pronósticos al futuro
+
+```{r}
+data1_fit2 <- data1 |> 
+  model(
+    drift = RW(price ~ drift())
+  )
+
+data2_fit2 <- data2 |> 
+  model(
+    data1_AAN = ETS(log(Cement) ~ error("A") + trend("A") + season("A"))
+  )
+
+data1_fc_fut <- data1_fit2 |> 
+  forecast(h = "3 years")
+
+data2_fc_fut <- data2_fit2 |> 
+  forecast(h = "7 years")
+
+data1_fc_fut |> 
+  autoplot(data1)
+
+data2_fc_fut |> 
+  autoplot(data2)
+```
+
