@@ -20,13 +20,66 @@ format:
 library(tidyverse)
 library(fpp3)
 library(fable.prophet)
-library(zoo)
 ```
 
 # Limpieza de Datos -------------------------------------------------------------
+
 ## Importar los datos -----------------------------------------------------------
+
+```{r}
+train <- read.csv("train.csv")
+oil <- read.csv("oil.csv")
+stores <- read.csv("stores.csv")
+transactions <- read.csv("transactions.csv")
+holidays <- read.csv("holidays_events.csv")
+test <- read.csv("test.csv")
+```
+
 ## Convertir a Tibble-Tsibble ---------------------------------------------------
+
+```{r}
+train <- as_tibble(train) |> 
+  mutate(date = as.Date(date))
+
+test <- as_tibble(test) |> 
+  mutate(date = as.Date(date))
+
+oil <- as_tsibble(oil, index=date) |> 
+  mutate(date = as.Date(date))
+
+holidays <- as_tibble(holidays) |> 
+  mutate(date = as.Date(date))
+
+stores <- as_tibble(stores)
+
+transactions <- as_tibble(transactions) |> 
+  mutate(date = as.Date(date))
+```
+
 ## Separar ventas por tienda y producto -----------------------------------------
+
+```{r}
+# Dividir por tienda
+ventas_por_tienda <- train %>%
+  group_by(store_nbr) %>%
+  group_split() %>%
+  set_names(paste("Tienda", train$store_nbr %>% unique()))
+
+# Dividir cada tienda por familia de producto
+ventas_por_producto <- ventas_por_tienda %>%
+  map(~ .x %>%
+        group_by(family) %>%
+        group_split() %>%
+        set_names(paste(.x$family %>% unique())))
+```
+
+### Accesar a cualquier elemento de la lista -------------------------------------
+
+```{r}
+seafood_1 <- ventas_por_producto[["Tienda 1"]][["SEAFOOD"]]
+seafood_1
+```
+
 # Pronósticos del petroleo ------------------------------------------------------
 ## Separar en datos de entrenamiento --------------------------------------------
 ```{r}
