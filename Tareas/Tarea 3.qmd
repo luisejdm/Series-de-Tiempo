@@ -1,5 +1,5 @@
 ---
-title: "Tarea 2"
+title: "Tarea 3"
 author: "Luis Eduardo Jiménez del Muro - Lenin Adair Quezada Gómez"
 date: today
 format: 
@@ -65,7 +65,9 @@ data2 |>
   autoplot(Cement)
 ```
 
-## Establecer datos de entrenamiento y gráficas
+## Pronósticos ETS
+
+### Establecer datos de entrenamiento y gráficas
 
 ```{r}
 data1_train <- data1 |> 
@@ -95,7 +97,7 @@ ggplotly(p2, dynamicTicks = TRUE) |>
   rangeslider()
 ```
 
-### Gráficas de Estacionalidad
+#### Gráficas de Estacionalidad
 
 ```{r}
 data1_train |> 
@@ -107,7 +109,7 @@ data2_train |>
   ggplotly()
 ```
 
-### Descomposición de las series
+#### Descomposición de las series
 
 ```{r}
 data1_train |> 
@@ -123,7 +125,7 @@ data2_train |>
   ggplotly()
 ```
 
-### Datos de entrenamiento con transformación logarítmica.
+#### Datos de entrenamiento con transformación logarítmica.
 
 ```{r}
 data1_train |> 
@@ -135,7 +137,7 @@ data2_train |>
   ggtitle("Log de la producción de cemento en Australia")
 ```
 
-### Descomposición de la producción de cemento en Australia con transformación logarítmica
+#### Descomposición de la producción de cemento en Australia con transformación logarítmica
 
 ```{r}
 data1_train |> 
@@ -151,7 +153,7 @@ data2_train |>
   ggplotly()
 ```
 
-## Modelos de pronósticos
+### Modelos de pronósticos
 
 ```{r}
 data1_fit <- data1_train |> 
@@ -193,7 +195,7 @@ data1_fit
 data2_fit
 ```
 
-### Errores
+#### Errores
 
 ```{r}
 accuracy(data1_fit) |> 
@@ -203,7 +205,7 @@ accuracy(data2_fit) |>
   arrange(MAPE)
 ```
 
-### P-Values
+#### P-Values
 
 ```{r}
 data1_fit |> 
@@ -215,7 +217,7 @@ data2_fit |>
   features(.innov, ljung_box, lag=8)
 ```
 
-### Diagnóstico de residuos de los mejores modelos para el PIB de Italia
+#### Diagnóstico de residuos de los mejores modelos para el PIB de Italia
 
 ```{r}
 data1_fit |> 
@@ -227,7 +229,7 @@ data1_fit |>
   gg_tsresiduals()
 ```
 
-## Diagnóstico de residuos de los mejores modelos para la producción de cemento en Australia
+### Diagnóstico de residuos de los mejores modelos para la producción de cemento en Australia
 
 ```{r}
 data2_fit |> 
@@ -239,7 +241,7 @@ data2_fit |>
   gg_tsresiduals()
 ```
 
-## Pronósticos con los datos de entrenamiento
+### Pronósticos con los datos de entrenamiento
 
 ```{r}
 data1_fc <- data1_fit |> 
@@ -264,7 +266,7 @@ data2_fc |>
   theme(legend.position = "none")
 ```
 
-## Errores del pronóstico estimados
+### Errores del pronóstico estimados
 
 ```{r}
 data1_fc |> 
@@ -278,7 +280,7 @@ data2_fc |>
   arrange(MAPE)
 ```
 
-## Pronósticos al futuro
+### Pronósticos al futuro
 
 ```{r}
 data1_fit2 <- data1 |> 

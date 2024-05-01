@@ -1,0 +1,78 @@
+---
+title: "Proyecto Final"
+author: "David Campos Ambriz - Luis Eduardo Jiménez del Muro - Lenin Adair Quezada Gómez"
+date: today
+format: 
+  html:
+    embed-resources: true
+    toc: true
+    code-link: true
+    theme: 
+      light: minty
+      dark: darkly
+---
+
+# Librerías----------------------------------------------------------------------
+
+```{r}
+#| message: false
+
+library(tidyverse)
+library(fpp3)
+library(fable.prophet)
+library(zoo)
+```
+
+# Limpieza de Datos -------------------------------------------------------------
+## Importar los datos -----------------------------------------------------------
+## Convertir a Tibble-Tsibble ---------------------------------------------------
+## Separar ventas por tienda y producto -----------------------------------------
+# Pronósticos del petroleo ------------------------------------------------------
+## Separar en datos de entrenamiento --------------------------------------------
+```{r}
+oil_train <- oil |> 
+  filter_index(. ~ "2016-10-01") |> 
+  na.omit()
+
+oil_train |> 
+  autoplot(dcoilwtico)
+```
+## Model fitting ----------------------------------------------------------------
+```{r}
+oil_fit <- oil_train |> 
+  model(
+    prophet_auto = prophet(dcoilwtico),
+    naive = NAIVE(dcoilwtico),
+    mean = MEAN(dcoilwtico),
+    arima = ARIMA(dcoilwtico),
+    ets = ETS(dcoilwtico),
+    drift = RW(dcoilwtico)
+  )
+
+oil_fit
+```
+
+```{r}
+accuracy(oil_fit)
+```
+
+## Pronósticos en los datos de entrenamiento ------------------------------------
+
+```{r}
+oil_fc <- oil_fit |> 
+  forecast(h = 340)
+
+oil_fc |> 
+  autoplot(oil, level = NULL)
+
+p <- oil_fc |> 
+  ggplot(aes(x = date, y = dcoilwtico)) +
+  geom_line(data = oil, aes(y = dcoilwtico)) +
+  geom_line(aes(color = .model), alpha = 0.5) +
+  facet_wrap(~ type, scales = "free_y", ncol = 1)
+
+plotly::ggplotly(p, dynamicTicks = TRUE) |> 
+  plotly::rangeslider()
+```
+
+
